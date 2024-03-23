@@ -37,14 +37,16 @@ def main():
 
 def parse_gpx(gpxdf, number):
     points = []
-    gpx_data = gpxpy.parse(gpxdf['activity_gpx'])
+    # print(gpxdf)
+    gpx_data = gpx = gpxpy.parse(gpxdf['activity_gpx']) 
     color = gpxdf['color']
     filename = gpxdf['filename']
-    
+    activity_name = gpxdf['activity_name']
+    # print(color)
     for track in gpx_data.tracks:
         for segment in track.segments:
             for point in segment.points:
-                points.append({'Latitude': point.latitude, 'Longitude': point.longitude, 'Color': color, 'Number': number})
+                points.append({'Latitude': point.latitude, 'Longitude': point.longitude, 'Color': color, 'Number' : number, 'activity_name': activity_name, 'filename': filename})
     return points
 
 def bucket_query_namefiles():
@@ -68,17 +70,18 @@ def download_files():
     s3 = session.resource('s3') 
     files_df = pd.DataFrame()
     filenames = bucket_query_namefiles()
-    
+    json_df = pd.DataFrame()
     for filename in filenames:
         content_object = s3.Object('solvesdgs', filename)
         file_content = content_object.get()['Body'].read()    
         json_content = json.loads(file_content)
         json_content['filename'] = filename
         json_content['color'] = generate_random_color()
-        content_df = pd.DataFrame([json_content], index=[0])[['activity_gpx', 'filename', 'color']]
-        files_df = pd.concat([files_df, content_df], ignore_index=True)
-        
-    return files_df
+        content_df = pd.DataFrame([json_content],  index=[0])
+        content_df= content_df[['activity_gpx','filename', 'color' , 'activity_name']]
+        json_df = pd.concat([json_df,content_df], ignore_index=True)
+
+    return json_df
 
 def plot_map(points):
     m = folium.Map(location=[points[0]['Latitude'], points[0]['Longitude']], zoom_start=12)
@@ -86,8 +89,8 @@ def plot_map(points):
     
     for point in points:
         if not seen.get(point['Number'], False):
-            folium.Marker(location=[point['Latitude'], point['Longitude']],
-                          icon=folium.Icon(color=point['Color'], icon='info-sign')).add_to(m)
+            folium.Marker(location=[point['Latitude'], point['Longitude']],  popup= point['activity_name'],
+                          icon=folium.Icon(color=point['Color'])).add_to(m)
         seen[point['Number']] = True
 
     grouped = pd.DataFrame(points).groupby('Number')
