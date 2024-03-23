@@ -216,13 +216,9 @@ def loadPage(hash):
 
 if __name__ == '__main__':
     params = st.query_params
-    
-    
-    
     if "tripId" in params:
         loadPage(params["tripId"])
     else:
-        st.query_params.tripId = 1
         st.text("No tripId given.")
     
             
