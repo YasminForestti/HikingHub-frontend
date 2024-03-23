@@ -70,7 +70,7 @@ def main():
     }
 
     if st.session_state['authentication_status'] and st.session_state['is_guide']:
-        
+
         with st.form("Guiders Registration Form"):
             activity_name = st.text_input("Activity Name")
             jsonname = hl.md5(activity_name.encode('utf-8')).hexdigest() + ".json"
@@ -122,8 +122,8 @@ def main():
             data_for_json['activity_link'] = activity_link
             activity_tweet = st.text_input("Summarize your activity in a tweet")
             data_for_json['activity_tweet'] = activity_tweet
-            activity_age_group = st.slider("What's the range of ages that can participate in you activity?", 0, 100, (25, 75))
-            data_for_json['activity_age_group'] = str(activity_age_group)
+            activity_age_group = st.selectbox("What's the maximum ages that can participate in you activity?", ["Select Age Group", "0-3", "4-6", "7-9", "10-20", "21-30", "31-40", "41-50", "51-60", "61-70", "71-80", "81+"])
+            data_for_json['activity_age_group'] = activity_age_group
             message4users = st.text_area("Anything you want to tell your future participants?")
             data_for_json['message4users'] = message4users
             if st.form_submit_button("Upload activity"):
@@ -141,6 +141,10 @@ def main():
 
                     # call to render Folium map in Streamlit
                     st_data = st_folium(m, width=725)
+
+    else:
+        st.write("You are not authenticated to access this page")
+        st.write("Please login to access this page")
 
 if __name__ == "__main__":
     main()

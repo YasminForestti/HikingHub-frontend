@@ -11,6 +11,8 @@ import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
 
+username = ""
+authentication_status = False
 
 def main(): 
     title = "Login Page"
@@ -48,13 +50,7 @@ def main():
         unsafe_allow_html=True
     )
 
-    # Fetch the image from the URL
-    response = requests.get(side_bg)
-    # Ensure the request was successful
-    response.raise_for_status()
-
-    # Encode the image content in Base64
-    encoded_image = base64.b64encode(response.content).decode()
+    
 
     # Use the encoded image in the CSS
 
@@ -159,6 +155,8 @@ def main():
                 st.title('Enjoy BeyondAurora')
                 if config['credentials']['usernames'][username]['is_guide']:
                     st.write('You are a guide')
+                    st.session_state['is_guide'] = True
+                st.session_state['username'] = username
 
             elif authentication_status == False:
                 st.error('Username/password is incorrect')
