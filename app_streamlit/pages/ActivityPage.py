@@ -13,19 +13,68 @@ from streamlit_folium import st_folium
 def plot_map(points): 
     m = folium.Map(location=[points[0]['Latitude'], points[0]['Longitude']], zoom_start=12) 
     seen = {} 
+     
     for point in points: 
         if not seen.get(point['Number'], False): 
             folium.Marker(location=[point['Latitude'], point['Longitude']], 
-                        icon=folium.Icon(color=point['Color'], icon='info-sign')).add_to(m) 
+                          icon=folium.Icon(color=point['Color'], icon='info-sign')).add_to(m) 
         seen[point['Number']] = True 
     grouped = pd.DataFrame(points).groupby('Number') 
-
+ 
     for number_id, group_data in grouped: 
         color_1 = group_data['Color'].iloc[0] 
         locations = [(row['Latitude'], row['Longitude']) for index, row in group_data.iterrows()] 
         folium.PolyLine(locations=locations, color=color_1).add_to(m) 
-
+         
     return m
+
+
+def process_gpx_to_df(file_name): 
+    #gpx = gpxpy.parse(open(file_name))  
+    gpx = gpxpy.parse(file_name)
+    #(1)make DataFrame 
+    track = gpx.tracks[0] 
+    segment = track.segments[0] 
+    # Load the data into a Pandas dataframe (by way of a list) 
+    data = [] 
+    segment_length = segment.length_3d() 
+    for point_idx, point in enumerate(segment.points): 
+        data.append([point.longitude, point.latitude,point.elevation, 
+        point.time, segment.get_speed(point_idx), 10]) 
+        columns = ['Longitude', 'Latitude', 'Altitude', 'Time', 'Speed', 'Size'] 
+        gpx_df = pd.DataFrame(data, columns=columns) 
+         
+    #2(make points tuple for line) 
+    points = [] 
+    for track in gpx.tracks: 
+        for segment in track.segments:  
+            for point in segment.points: 
+                points.append(tuple([point.latitude, point.longitude])) 
+                
+    return gpx_df, points
+
+
+class Comment(object):
+  def __init__(self,userurl, username, title, text, images):
+    self.userurl = userurl
+    self.username = username
+    self.title = title
+    self.text = text
+    self.images = images
+
+
+comments = [Comment("https://www.google.com/","John", "Wow", "look at this", ["https://cdn.discordapp.com/attachments/1220854776321933424/1220854824090865794/hikeman.jpg?ex=661074a8&is=65fdffa8&hm=6ea332c0f680b0016e7d2b28a5112c62670b5e9ccd2b75430df72378f43dd741&","https://cdn.discordapp.com/attachments/1220854776321933424/1220855680689373224/s-man-hiking-backpacking-foggy-cloudy-finland-autumn-forest-lakeside.png?ex=66107574&is=65fe0074&hm=c4ef5789df7aa810b13fdf49e763bb0978d4b8772c84352c00078da50283da83&"]),
+            Comment("https://www.google.com/","Peter", "Nice", "look another one", ["https://cdn.discordapp.com/attachments/1220854776321933424/1220855840580304996/34116586536_713f6e6b04_b.png?ex=6610759a&is=65fe009a&hm=bff34c7a544cfc45234c64617e277f7c04eafb1a687cb2916857e1739d0f8826&"])]
+comments = []
+
+
+
+IMAGES = [
+    "https://cdn.discordapp.com/attachments/1220854776321933424/1220854824090865794/hikeman.jpg?ex=661074a8&is=65fdffa8&hm=6ea332c0f680b0016e7d2b28a5112c62670b5e9ccd2b75430df72378f43dd741&",
+    "https://cdn.discordapp.com/attachments/1220854776321933424/1220855680689373224/s-man-hiking-backpacking-foggy-cloudy-finland-autumn-forest-lakeside.png?ex=66107574&is=65fe0074&hm=c4ef5789df7aa810b13fdf49e763bb0978d4b8772c84352c00078da50283da83&",
+    "https://cdn.discordapp.com/attachments/1220854776321933424/1220855840580304996/34116586536_713f6e6b04_b.png?ex=6610759a&is=65fe009a&hm=bff34c7a544cfc45234c64617e277f7c04eafb1a687cb2916857e1739d0f8826&",
+    "https://cdn.discordapp.com/attachments/1220854776321933424/1220855905407598682/web_AdventurebyDesign20Halti20top.png?ex=661075aa&is=65fe00aa&hm=9e7642f9de63858f4c4506f4550368b74a6ee820cd0744bac83b05020a349cdf&",
+]
 
 def slideshow_swipeable(images):
     # Generate a session state key based on images.
@@ -82,6 +131,7 @@ def showComments(comments):
                         images.append("https://solvesdgs.s3.us-east-2.amazonaws.com/" + imageEnd)
                     slideshow_swipeable(images)
 
+
 def queryTrip(hash):
     s3 = boto3.resource('s3')    
     content_object = s3.Object('solvesdgs', 'activityfiles/' + hash + '.json')
@@ -94,12 +144,13 @@ def queryTrip(hash):
 def parse_gpx(gpxdf): 
     points = [] 
     gpx_data = gpxpy.parse(gpxdf['activity_gpx']) 
-    
     for track in gpx_data.tracks: 
         for segment in track.segments: 
             for point in segment.points: 
                 points.append({'Latitude': point.latitude, 'Longitude': point.longitude, 'Color': 'red', 'Number': 0}) 
     return points
+
+
 
 def loadPage(hash):
     siteData = queryTrip(hash)
@@ -117,7 +168,7 @@ def loadPage(hash):
     st_folium(map)
     
 
-    st.text(siteData["activity_description"])
+    title = st.text(siteData["activity_description"])
     images = []
     imageEnds = siteData["activity_images"].split(",")
     imageEnds.pop()
@@ -156,7 +207,8 @@ def loadPage(hash):
             file = s3.Object("solvesdgs", "activityfiles/"+ hash+".json")
             file.put(Body=json.dumps(siteData))
             for key in st.session_state.keys():
-                del st.session_state[key]
+                if key[:21] == "slideshow_swipeable_":
+                    del st.session_state[key]
     showComments(siteData["activity_comments"])
 
 
