@@ -1,0 +1,23 @@
+cookie:
+  expiry_days: 0.0
+  key: lol?
+  name: 2lol?
+credentials:
+  usernames:
+    bekebela:
+      is_guide: true
+      logged_in: false
+      name: "B\xE9la Beke"
+      password: $2b$12$Q/Z/pDoAn62vVnL6jov.o.m2ADEHYR9VWR9b/o5oq452gBSVgjQBi
+    carlos-elias-riv:
+      is_guide: false
+      logged_in: false
+      name: Carlos Rivera
+      password: $2b$12$hGt/GznT5hBLlaPEFcpRouriQOTPqGfAthRCl22tjgcm8Ls5.OqRK
+    yasfor:
+      is_guide: false
+      name: Yasmin Forestti
+      password: oimundo
+preauthorized:
+  emails:
+  - melsby@gmail.com

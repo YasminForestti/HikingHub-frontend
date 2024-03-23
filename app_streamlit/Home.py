@@ -28,6 +28,11 @@ def main():
     
     st.title("Beyond Aurora")
     st.markdown("---")
+    if 'authentication_status' not in st.session_state:
+        st.session_state['authentication_status'] = False
+
+    if 'username' not in st.session_state:
+        st.session_state['username'] = 'anonymousbot'
     
     # Call the read_files() function to fetch the data
     all_points = read_files()
