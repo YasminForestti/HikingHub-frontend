@@ -7,11 +7,33 @@ import json
 import random
 from streamlit_folium import st_folium
 
+# Define a global variable to track whether the map has been rendered
+map_rendered = False
+
+@st.cache_data
+def read_files():
+    df_content = download_files()
+    all_points = []
+    
+    for index, row in df_content.iterrows():
+        points = parse_gpx(row, index)
+        all_points.extend(points)
+
+    return all_points
+
 def main():
+    global map_rendered
+    
     st.title("Beyond Aurora")
     st.markdown("---")
+    
+    # Call the read_files() function to fetch the data
     all_points = read_files()
-    st_folium(plot_map(all_points))
+    
+    # Render the map only if it hasn't been rendered yet
+    if not map_rendered:
+        st_folium(plot_map(all_points))
+        map_rendered = True
 
 def parse_gpx(gpxdf, number):
     points = []
@@ -38,7 +60,8 @@ def bucket_query_namefiles():
     return activity_filenames[1:]  # Consider why you're skipping the first item
 
 def generate_random_color():
-    return "#{:06x}".format(random.randint(0, 0xFFFFFF))
+    colors = ['black', 'lightgreen', 'lightblue', 'darkred', 'purple', 'lightred', 'lightgray', 'pink', 'green', 'cadetblue', 'gray', 'red', 'beige', 'blue', 'white', 'darkgreen', 'darkblue', 'darkpurple', 'orange']
+    return colors[random.randint(0, len(colors)-1)]
 
 def download_files():
     session = boto3.Session()
@@ -56,16 +79,6 @@ def download_files():
         files_df = pd.concat([files_df, content_df], ignore_index=True)
         
     return files_df
-
-def read_files():
-    df_content = download_files()
-    all_points = []
-    
-    for index, row in df_content.iterrows():
-        points = parse_gpx(row, index)
-        all_points.extend(points)
-
-    return all_points
 
 def plot_map(points):
     m = folium.Map(location=[points[0]['Latitude'], points[0]['Longitude']], zoom_start=12)
