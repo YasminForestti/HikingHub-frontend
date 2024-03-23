@@ -120,7 +120,6 @@ def showComments(comments):
         st.text("Comments:")
         for comment in comments:
             with st.container(border = True):
-                st.markdown("<a href=" + comment["comment_url"] + ">"+ comment["comment_username"]+ "</a>",unsafe_allow_html=True)
                 st.text(comment["comment_title"])
                 st.text(comment["comment_description"])
                 if comment["comment_images"] != "":
@@ -168,7 +167,7 @@ def loadPage(hash):
     st_folium(map, height=  300, width = 1000)
     
 
-    title = st.text(siteData["activity_description"])
+    st.text(siteData["activity_description"])
     images = []
     imageEnds = siteData["activity_images"].split(",")
     imageEnds.pop()
@@ -176,14 +175,14 @@ def loadPage(hash):
         images.append("https://solvesdgs.s3.us-east-2.amazonaws.com/" + imageEnd)
     slideshow_swipeable(images)
     
+    st.text("Kilometers: " + siteData["activity_kilometers"] + " km")
+    
     with st.form("my_form"):
         st.write("Write your own experience!")
         comment = dict()
         comment["comment_title"] = st.text_input("Title")
         comment["comment_description"] = st.text_input("desctiption")
         images= st.file_uploader("Any beautiful image you want to share of your comment?", accept_multiple_files=True)
-        comment["comment_url"] = "https://www.google.com/"
-        comment["comment_username"] = "Dud"
         
         # Every form must have a submit button.
         submitted = st.form_submit_button("Submit")
@@ -210,17 +209,22 @@ def loadPage(hash):
                 if key[:21] == "slideshow_swipeable_":
                     del st.session_state[key]
     showComments(siteData["activity_comments"])
+    
 
 
 
 
 if __name__ == '__main__':
+    params = st.query_params
     
-    params =st.query_params
+    
+    
     if "tripId" in params:
         loadPage(params["tripId"])
     else:
+        st.query_params.tripId = 1
         st.text("No tripId given.")
+    
             
         
         
