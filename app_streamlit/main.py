@@ -6,6 +6,8 @@ import boto3
 import json
 import random
 from streamlit_folium import st_folium
+from streamlit_javascript import st_javascript
+
 
 # Define a global variable to track whether the map has been rendered
 map_rendered = False
@@ -37,7 +39,6 @@ def main():
 
 def parse_gpx(gpxdf, number):
     points = []
-    # print(gpxdf)
     gpx_data = gpx = gpxpy.parse(gpxdf['activity_gpx']) 
     color = gpxdf['color']
     filename = gpxdf['filename']
@@ -84,12 +85,20 @@ def download_files():
     return json_df
 
 def plot_map(points):
-    m = folium.Map(location=[points[0]['Latitude'], points[0]['Longitude']], zoom_start=12)
+    url = st_javascript("await fetch('').then(r => window.parent.location.href)")
+
+    m = folium.Map(location=[points[0]['Latitude'], points[0]['Longitude']], zoom_start=5, width=100, height=100)
     seen = {}
     
     for point in points:
         if not seen.get(point['Number'], False):
-            folium.Marker(location=[point['Latitude'], point['Longitude']],  popup= point['activity_name'],
+            # Creating a link with HTML formatting
+            point['filename'] = point['filename'].replace("activityfiles/", "")
+            point['filename'] = point['filename'].replace(".json", "")
+            link = str(url) + 'ActivityPage/?tripId=' + str(point['filename'])
+           
+            popup_content = '<a href="{link}"  target="_blank">{name}</a>'.format(link= link, name=point['activity_name'])
+            folium.Marker(location=[point['Latitude'], point['Longitude']], popup=popup_content,
                           icon=folium.Icon(color=point['Color'])).add_to(m)
         seen[point['Number']] = True
 

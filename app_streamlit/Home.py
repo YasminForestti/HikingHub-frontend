@@ -6,6 +6,8 @@ import boto3
 import json
 import random
 from streamlit_folium import st_folium
+from streamlit_javascript import st_javascript
+
 
 # Define a global variable to track whether the map has been rendered
 map_rendered = False
@@ -32,19 +34,20 @@ def main():
     
     # Render the map only if it hasn't been rendered yet
     if not map_rendered:
-        st_folium(plot_map(all_points))
+        st_folium(plot_map(all_points), height=  300, width = 1000, use_container_width = True)
         map_rendered = True
 
 def parse_gpx(gpxdf, number):
     points = []
-    gpx_data = gpxpy.parse(gpxdf['activity_gpx'])
+    gpx_data = gpx = gpxpy.parse(gpxdf['activity_gpx']) 
     color = gpxdf['color']
     filename = gpxdf['filename']
-    
+    activity_name = gpxdf['activity_name']
+    # print(color)
     for track in gpx_data.tracks:
         for segment in track.segments:
             for point in segment.points:
-                points.append({'Latitude': point.latitude, 'Longitude': point.longitude, 'Color': color, 'Number': number})
+                points.append({'Latitude': point.latitude, 'Longitude': point.longitude, 'Color': color, 'Number' : number, 'activity_name': activity_name, 'filename': filename})
     return points
 
 def bucket_query_namefiles():
@@ -68,26 +71,35 @@ def download_files():
     s3 = session.resource('s3') 
     files_df = pd.DataFrame()
     filenames = bucket_query_namefiles()
-    
+    json_df = pd.DataFrame()
     for filename in filenames:
         content_object = s3.Object('solvesdgs', filename)
         file_content = content_object.get()['Body'].read()    
         json_content = json.loads(file_content)
         json_content['filename'] = filename
         json_content['color'] = generate_random_color()
-        content_df = pd.DataFrame([json_content], index=[0])[['activity_gpx', 'filename', 'color']]
-        files_df = pd.concat([files_df, content_df], ignore_index=True)
-        
-    return files_df
+        content_df = pd.DataFrame([json_content],  index=[0])
+        content_df= content_df[['activity_gpx','filename', 'color' , 'activity_name']]
+        json_df = pd.concat([json_df,content_df], ignore_index=True)
+
+    return json_df
 
 def plot_map(points):
-    m = folium.Map(location=[points[0]['Latitude'], points[0]['Longitude']], zoom_start=12)
+    url = st_javascript("await fetch('').then(r => window.parent.location.href)")
+
+    m = folium.Map(location=[points[0]['Latitude'], points[0]['Longitude']], zoom_start=5)
     seen = {}
     
     for point in points:
         if not seen.get(point['Number'], False):
-            folium.Marker(location=[point['Latitude'], point['Longitude']],
-                          icon=folium.Icon(color=point['Color'], icon='info-sign')).add_to(m)
+            # Creating a link with HTML formatting
+            point['filename'] = point['filename'].replace("activityfiles/", "")
+            point['filename'] = point['filename'].replace(".json", "")
+            link = str(url) + 'ActivityPage/?tripId=' + str(point['filename'])
+           
+            popup_content = '<a href="{link}"  target="_blank">{name}</a>'.format(link= link, name=point['activity_name'])
+            folium.Marker(location=[point['Latitude'], point['Longitude']], popup=popup_content,
+                          icon=folium.Icon(color=point['Color'])).add_to(m)
         seen[point['Number']] = True
 
     grouped = pd.DataFrame(points).groupby('Number')
