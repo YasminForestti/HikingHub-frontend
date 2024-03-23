@@ -1,60 +1,89 @@
 import streamlit as st
 import gpxpy
 import folium
+import pandas as pd
+import boto3
+import json
+import random
 from streamlit_folium import st_folium
 
-
 def main():
-    # Page title/header
-    st.title("Basic Streamlit Page with Map")
-    
-    # Map section
-    st.markdown("---")  # Adding a horizontal line for visual separation
-    st.header("Map Section")
-    st.write("This is the map section")
-    # You can add your map here using st.map() function
-    df = read_files()
+    st.title("Beyond Aurora")
+    st.markdown("---")
     all_points = read_files()
     st_folium(plot_map(all_points))
-    # st.map(df, latitude='Latitude', longitude='Longitude', color='Color', size = '10')
 
-
-
-def parse_gpx(file_path, color='red', number = 0):
-    gpx_file = open(file_path, 'r')
-    gpx = gpxpy.parse(gpx_file)
+def parse_gpx(gpxdf, number):
     points = []
-
-    for track in gpx.tracks:
+    gpx_data = gpxpy.parse(gpxdf['activity_gpx'])
+    color = gpxdf['color']
+    filename = gpxdf['filename']
+    
+    for track in gpx_data.tracks:
         for segment in track.segments:
             for point in segment.points:
-                points.append({'Latitude': point.latitude, 'Longitude': point.longitude, 'Color': color, 'Number' : number})
-        number +=1
+                points.append({'Latitude': point.latitude, 'Longitude': point.longitude, 'Color': color, 'Number': number})
     return points
 
-def read_files():
-    gpx_files = ["00c6622.gpx", '0a7b419.gpx', '0ab9d37.gpx']  # Add your GPX file paths here
-    colors = {'00c6622.gpx': 'red', '0a7b419.gpx': 'blue', '0ab9d37.gpx': 'green'}  # Colors for each GPX file
+def bucket_query_namefiles():
+    activity_filenames = []
+    session = boto3.Session()
+    s3 = session.resource('s3') 
+    bucket = s3.Bucket('solvesdgs')
+    
+    for obj in bucket.objects.all():
+        if 'activityfiles' in obj.key:
+            activity_filenames.append(obj.key)
+            
+    return activity_filenames[1:]  # Consider why you're skipping the first item
 
-    # Parse each GPX file
+def generate_random_color():
+    return "#{:06x}".format(random.randint(0, 0xFFFFFF))
+
+def download_files():
+    session = boto3.Session()
+    s3 = session.resource('s3') 
+    files_df = pd.DataFrame()
+    filenames = bucket_query_namefiles()
+    
+    for filename in filenames:
+        content_object = s3.Object('solvesdgs', filename)
+        file_content = content_object.get()['Body'].read()    
+        json_content = json.loads(file_content)
+        json_content['filename'] = filename
+        json_content['color'] = generate_random_color()
+        content_df = pd.DataFrame([json_content], index=[0])[['activity_gpx', 'filename', 'color']]
+        files_df = pd.concat([files_df, content_df], ignore_index=True)
+        
+    return files_df
+
+def read_files():
+    df_content = download_files()
     all_points = []
-    number = 0 
-    for file, color in colors.items():
-        points = parse_gpx(file, color, number)
-        number += 1
+    
+    for index, row in df_content.iterrows():
+        points = parse_gpx(row, index)
         all_points.extend(points)
+
     return all_points
 
 def plot_map(points):
     m = folium.Map(location=[points[0]['Latitude'], points[0]['Longitude']], zoom_start=12)
     seen = {}
+    
     for point in points:
         if not seen.get(point['Number'], False):
             folium.Marker(location=[point['Latitude'], point['Longitude']],
-                      icon=folium.Icon(color=point['Color'], icon='info-sign')
-                      ).add_to(m)
-        #folium.PolyLine(locations=[point['Latitude'], point['Longitude']], color=point['Color']).add_to(m)
+                          icon=folium.Icon(color=point['Color'], icon='info-sign')).add_to(m)
         seen[point['Number']] = True
+
+    grouped = pd.DataFrame(points).groupby('Number')
+
+    for number_id, group_data in grouped:
+        color_1 = group_data['Color'].iloc[0]
+        locations = [(row['Latitude'], row['Longitude']) for index, row in group_data.iterrows()]
+        folium.PolyLine(locations=locations, color=color_1).add_to(m)
+        
     return m
 
 if __name__ == "__main__":
