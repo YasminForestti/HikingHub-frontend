@@ -31,12 +31,56 @@ def main():
     
     # Call the read_files() function to fetch the data
     all_points = read_files()
+
+    serach_bar()
     
     # Render the map only if it hasn't been rendered yet
     if not map_rendered:
         st_folium(plot_map(all_points), height=  300, width = 1000, use_container_width = True)
         map_rendered = True
+def serach_bar():
+    with st.form("my_form"):
+        st.write("Filters")
+        comment = dict()
+        comment["distance"] = st.slider("Maximun distances (km)", min_value=0, max_value=100, step=None, format=None, key=None, help=None, on_change=None, args=None, kwargs=None, disabled=False, label_visibility="visible")
+        comment["location"] = st.text_input("Location")
+        # comment["comment_description"] = st.text_input("desctiption")
+        comment['Minimum ages'] = st.slider("Minimum Age", min_value=0, max_value=100, step=None, format=None, key=None, help=None, on_change=None, args=None, kwargs=None, disabled=False, label_visibility="visible")
 
+        submitted = st.form_submit_button("Submit")
+
+        if submitted:
+            df_stored_data = download_files()
+            if comment["location"] is not None or comment["location"] != "" or comment["location"] != " ":
+                st.write(comment["location"])
+                df_stored_data = df_stored_data[df_stored_data['activity_location'] == comment["location"] ]
+            # if comment["distance"] is not None:
+                # df_stored_data = df_stored_data[df_stored_data['activity_location'].find(comment["distance"])]
+            # if comment["activity_age_group"] is not None:
+            #     df_stored_data = df_stored_data[df_stored_data['activity_age_group'] >= comment["Minimum ages"]]
+
+        return submitted
+        #     client = boto3.client('s3', region_name='us-east-2')
+        #     comment['comment_images'] = ""
+        #     for activity_image in images:
+        #         if activity_image is not None: 
+        #             ext = activity_image.name.find(".")
+        #             ext = activity_image.name[ext:]
+        #             imageloc = 'commentimages/' + hl.md5(activity_image.name.encode('utf-8')).hexdigest() + ext
+        #             comment['comment_images'] += imageloc + ","
+        #             client.upload_fileobj(
+        #                 Fileobj=activity_image,
+        #                 Bucket='solvesdgs',
+        #                 Key=imageloc,
+        #                 ExtraArgs={'ACL': 'public-read'}  # This makes the file publicly readable
+        #             )
+        #     siteData["activity_comments"].append(comment)
+        #     s3 = boto3.resource("s3")
+        #     file = s3.Object("solvesdgs", "activityfiles/"+ hash+".json")
+        #     file.put(Body=json.dumps(siteData))
+        #     for key in st.session_state.keys():
+        #         if key[:21] == "slideshow_swipeable_":
+        #             del st.session_state[key]
 def parse_gpx(gpxdf, number):
     points = []
     gpx_data = gpx = gpxpy.parse(gpxdf['activity_gpx']) 
@@ -79,7 +123,7 @@ def download_files():
         json_content['filename'] = filename
         json_content['color'] = generate_random_color()
         content_df = pd.DataFrame([json_content],  index=[0])
-        content_df= content_df[['activity_gpx','filename', 'color' , 'activity_name']]
+        content_df= content_df[['activity_gpx','filename', 'color' , 'activity_name', 'activity_location', 'activity_age_group']] # in future kms
         json_df = pd.concat([json_df,content_df], ignore_index=True)
 
     return json_df

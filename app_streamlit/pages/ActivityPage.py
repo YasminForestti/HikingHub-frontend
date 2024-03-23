@@ -165,7 +165,7 @@ def loadPage(hash):
     
     points = parse_gpx(siteData)
     map = plot_map(points)
-    st_folium(map)
+    st_folium(map, height=  300, width = 1000)
     
 
     title = st.text(siteData["activity_description"])
